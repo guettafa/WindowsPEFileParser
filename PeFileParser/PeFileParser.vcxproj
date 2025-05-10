@@ -151,6 +151,7 @@
     <ClCompile Include="src\peFile.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\constants.h" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\peFile.h" />
   </ItemGroup>

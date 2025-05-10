@@ -1,0 +1,11 @@
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+
+#include "pch.h"
+
+#define EXECUTABLE_MARK 0x5A4D
+
+#define IMG_BIT64 IMAGE_NT_OPTIONAL_HDR64_MAGIC;
+#define IMG_BIT32 IMAGE_NT_OPTIONAL_HDR32_MAGIC;
+
+#endif
