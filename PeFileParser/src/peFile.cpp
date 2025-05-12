@@ -95,7 +95,6 @@ bool PeFile::ParseaImportDirTable()
 
 		fseek(m_PEFilePtr, OffDLL, SEEK_SET);
 		fread(&m_ImportTable[i], szIID, 1, m_PEFilePtr);
-		fread(&m_ImportTable[i], szIID, 1, m_PEFilePtr);
 
 		DWORD OffName = (m_ImportTable[i].Name - m_ImportDir.VirtualAddress) + OffImportedDLLs;
 
@@ -123,6 +122,8 @@ bool PeFile::ParseaImportDirTable()
 			nameDLL,
 			nameLengthDLL
 		};
+
+		std::printf("Name : %s - Size : %d\n", m_SecondImportTable[i].Name, m_SecondImportTable[i].Length);
 	}
 	return 0;
 }
