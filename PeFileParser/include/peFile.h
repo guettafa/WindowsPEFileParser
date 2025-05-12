@@ -4,6 +4,12 @@
 #include "pch.h"
 #include "constants.h"
 
+struct PeImport
+{
+	char* Name;
+	int   Length;
+};
+
 class PeFile
 {
 private:
@@ -28,31 +34,39 @@ private:
 	
 	WORD  m_Bit;					// x86 or x64
 	DWORD m_RVAToCode;				// Relative Address of start of the code section when file loaded
-	ULONGLONG m_ImageBase;			// Desired Image Base Address
+	DWORD m_ImageBase;			    // Desired Image Base Address
 	DWORD m_SizeOfImage;		    // Size of image including all Headers
+	
+	// NT Headers -- Optional Header - Data Dirs
 
-	IMAGE_DATA_DIRECTORY m_Imports; // Import Table
-	IMAGE_DATA_DIRECTORY m_Exports; // Export Table
+	IMAGE_DATA_DIRECTORY* m_DataDirs; // Array of Data Directory Entries
+
+	IMAGE_DATA_DIRECTORY m_ImportDir; // Import Table 
+	IMAGE_DATA_DIRECTORY m_ExportDir; // Export Table
+
+	IMAGE_IMPORT_DESCRIPTOR* m_ImportTable;  // All dlls imported
+	PeImport* m_SecondImportTable;
 
 	// Section Headers
 	
 	IMAGE_SECTION_HEADER* m_SectionHeaders; // Array of with all Section Headers
 
 public:
+	bool ParseFile();
 	bool ParseDOSHeader();
 	bool ParseNTHeaders();
 	bool ParseSectionHeaders();
+	bool ParseaImportDirTable();
 
 	inline PeFile(const char* aPeFileName, FILE* aPeFilePtr)
 		: m_PEFileName(aPeFileName), m_PEFilePtr(aPeFilePtr) 
 	{
-		if (ParseDOSHeader())      return;
-		if (ParseNTHeaders())      return;
-		if (ParseSectionHeaders()) return;
+		if (ParseFile()) return;
 	}
 
 	inline ~PeFile()
 	{
+		delete[] m_ImportTable;
 		delete[] m_SectionHeaders;
 	}
 };
