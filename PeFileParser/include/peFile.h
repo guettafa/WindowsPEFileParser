@@ -13,6 +13,11 @@ struct PeImport
 class PeFile
 {
 private:
+	bool ParseDOSHeader();
+	bool ParseNTHeaders();
+	bool ParseSectionHeaders();
+	bool ParseImportTable();
+
 	const char* m_PEFileName;
 	FILE*		m_PEFilePtr;
 	
@@ -40,12 +45,10 @@ private:
 	// NT Headers -- Optional Header - Data Dirs
 
 	IMAGE_DATA_DIRECTORY* m_DataDirs; // Array of Data Directory Entries
-
 	IMAGE_DATA_DIRECTORY m_ImportDir; // Import Table 
-	IMAGE_DATA_DIRECTORY m_ExportDir; // Export Table
 
 	IMAGE_IMPORT_DESCRIPTOR* m_ImportTable;  // All dlls imported
-	PeImport* m_SecondImportTable;
+	PeImport*				 m_SecondImportTable; // A second "import table" that
 
 	// Section Headers
 	
@@ -53,10 +56,6 @@ private:
 
 public:
 	bool ParseFile();
-	bool ParseDOSHeader();
-	bool ParseNTHeaders();
-	bool ParseSectionHeaders();
-	bool ParseaImportDirTable();
 
 	inline PeFile(const char* aPeFileName, FILE* aPeFilePtr)
 		: m_PEFileName(aPeFileName), m_PEFilePtr(aPeFilePtr) 
@@ -66,7 +65,9 @@ public:
 
 	inline ~PeFile()
 	{
+		delete[] m_DataDirs;
 		delete[] m_ImportTable;
+		delete[] m_SecondImportTable;
 		delete[] m_SectionHeaders;
 	}
 };

@@ -3,10 +3,10 @@
 
 bool PeFile::ParseFile()
 {
-	if (ParseDOSHeader())         return 1;
-	if (ParseNTHeaders())         return 1;
-	if (ParseSectionHeaders())    return 1;
-	if (ParseaImportDirTable())   return 1;
+	if (ParseDOSHeader())       return 1;
+	if (ParseNTHeaders())       return 1;
+	if (ParseSectionHeaders())  return 1;
+	if (ParseImportTable())		return 1;
 
 	return 0;
 }
@@ -45,7 +45,6 @@ bool PeFile::ParseNTHeaders()
 	// Optional Header - Data dirs
 	m_DataDirs	  = m_NTHeaders.OptionalHeader.DataDirectory;
 	m_ImportDir	  = m_DataDirs[IMAGE_DIRECTORY_ENTRY_IMPORT];
-	m_ExportDir	  = m_DataDirs[IMAGE_DIRECTORY_ENTRY_EXPORT];
 	
 	//std::printf("Arch : 0x%08x - Bit : 0x%08x\n", m_Arch, m_Bit);
 	//std::printf("VA of Import Directory Table : 0x%08x / Size : %d\n", m_ImportDir.VirtualAddress, m_ImportDir.Size);
@@ -76,7 +75,7 @@ bool PeFile::ParseSectionHeaders()
 	return 0;
 }
 
-bool PeFile::ParseaImportDirTable()
+bool PeFile::ParseImportTable()
 {
 	// eX : (23500 - 23000) + 0xf400 = 0xf900 = offset to the start of the import table
 	DWORD OffImportedDLLs = (m_ImportDir.VirtualAddress - m_SectionHeaders[5].VirtualAddress) + m_SectionHeaders[5].PointerToRawData;
@@ -96,31 +95,31 @@ bool PeFile::ParseaImportDirTable()
 		fseek(m_PEFilePtr, OffDLL, SEEK_SET);
 		fread(&m_ImportTable[i], szIID, 1, m_PEFilePtr);
 
-		DWORD OffName = (m_ImportTable[i].Name - m_ImportDir.VirtualAddress) + OffImportedDLLs;
+		DWORD OffDllName = (m_ImportTable[i].Name - m_ImportDir.VirtualAddress) + OffImportedDLLs;
 
 		// Get dll name length
-		int nameLengthDLL = 0;
+		int dllNameLen = 0;
 
 		char c = (char)"";
 		while (c != 0x00)
 		{
-			fseek(m_PEFilePtr, OffName + nameLengthDLL, SEEK_SET);
+			fseek(m_PEFilePtr, OffDllName + dllNameLen, SEEK_SET);
 			fread(&c, 1, 1, m_PEFilePtr);
 			
-			nameLengthDLL++;
+			dllNameLen++;
 		}
 
 		// Get dll name
-		char* nameDLL = new char[nameLengthDLL];
+		char* dllName = new char[dllNameLen];
 		
-		fseek(m_PEFilePtr, OffName, SEEK_SET);
-		fread(nameDLL, nameLengthDLL, 1, m_PEFilePtr);
+		fseek(m_PEFilePtr, OffDllName, SEEK_SET);
+		fread(dllName, dllNameLen, 1, m_PEFilePtr);
 
 		// A more expressif Import table struct lol
 		m_SecondImportTable[i] =
 		{
-			nameDLL,
-			nameLengthDLL
+			dllName,
+			dllNameLen
 		};
 
 		std::printf("Name : %s - Size : %d\n", m_SecondImportTable[i].Name, m_SecondImportTable[i].Length);
