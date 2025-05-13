@@ -54,12 +54,12 @@ private:
 	IMAGE_DATA_DIRECTORY  m_ImportDir;			  // Import Table 
 
 	IMAGE_IMPORT_DESCRIPTOR* m_ImportTable;		  // All dlls imported
-	PeImport*				 m_SecondImportTable; // A second "import table" that
+	PeImport*				 m_SecondImportTable; // A second "import table" 
 	int						 m_NumImportedDLL;
 
 	// Section Headers
 	
-	IMAGE_SECTION_HEADER* m_SectionHeaders; // Array of with all Section Headers
+	IMAGE_SECTION_HEADER* m_SectionHeaders; // Array with all Section Headers
 
 public:
 	bool ParseFile();
