@@ -18,6 +18,11 @@ private:
 	bool ParseSectionHeaders();
 	bool ParseImportTable();
 
+	void DisplayDOSHeader();
+	void DisplayNTHeader();
+	void DisplaySectionHeaders();
+	void DisplayImportTable();
+
 	const char* m_PEFileName;
 	FILE*		m_PEFilePtr;
 	
@@ -27,28 +32,30 @@ private:
 	// DOS Header
 	
 	DWORD m_MagicNumber;
+	DWORD m_StartOfNTHeaderOffset;
 
 	// NT Headers -- File Header
 
-	WORD  m_Arch;					// CPU Arch
-	DWORD m_TimeStamp;				// UNIX TimeStamp
-	DWORD m_NumberOfSectionHeaders; // Number of Section Headers
-	DWORD m_Characteristics;		// Executable, DLL, ...
-
-	// NT Headers -- Optional Header
-	
-	WORD  m_Bit;					// x86 or x64
-	DWORD m_RVAToCode;				// Relative Address of start of the code section when file loaded
-	DWORD m_ImageBase;			    // Desired Image Base Address
-	DWORD m_SizeOfImage;		    // Size of image including all Headers
+	WORD  m_Arch;							      // CPU Arch
+	DWORD m_TimeStamp;						      // UNIX TimeStamp
+	DWORD m_NumberOfSectionHeaders;			      // Number of Section Headers
+	DWORD m_Characteristics;				      // Executable, DLL, ...
+											      
+	// NT Headers -- Optional Header		      
+											      
+	WORD  m_Bit;							      // x86 or x64
+	DWORD m_RVAToCode;						      // Relative Address of start of the code section when file loaded
+	DWORD m_ImageBase;						      // Desired Image Base Address
+	DWORD m_SizeOfImage;					      // Size of image including all Headers
 	
 	// NT Headers -- Optional Header - Data Dirs
 
-	IMAGE_DATA_DIRECTORY* m_DataDirs; // Array of Data Directory Entries
-	IMAGE_DATA_DIRECTORY m_ImportDir; // Import Table 
+	IMAGE_DATA_DIRECTORY* m_DataDirs;			  // Array of Data Directory Entries
+	IMAGE_DATA_DIRECTORY  m_ImportDir;			  // Import Table 
 
-	IMAGE_IMPORT_DESCRIPTOR* m_ImportTable;  // All dlls imported
+	IMAGE_IMPORT_DESCRIPTOR* m_ImportTable;		  // All dlls imported
 	PeImport*				 m_SecondImportTable; // A second "import table" that
+	int						 m_NumImportedDLL;
 
 	// Section Headers
 	
@@ -56,6 +63,7 @@ private:
 
 public:
 	bool ParseFile();
+	void DisplayInfo();
 
 	inline PeFile(const char* aPeFileName, FILE* aPeFilePtr)
 		: m_PEFileName(aPeFileName), m_PEFilePtr(aPeFilePtr) 
@@ -65,9 +73,8 @@ public:
 
 	inline ~PeFile()
 	{
-		delete[] m_DataDirs;
-		delete[] m_ImportTable;
 		delete[] m_SecondImportTable;
+		delete[] m_ImportTable;
 		delete[] m_SectionHeaders;
 	}
 };

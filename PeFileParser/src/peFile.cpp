@@ -17,12 +17,16 @@ bool PeFile::ParseDOSHeader()
 	
 	fseek(m_PEFilePtr, 0, SEEK_SET);							   // Set File ptr at the start of the PE File
 	fread(&m_DOSHeader, sizeof(IMAGE_DOS_HEADER), 1, m_PEFilePtr); // Read each byte until the end of the DOS Header
-	
+
 	if (m_DOSHeader.e_magic != EXECUTABLE_MARK)
 	{
 		std::printf("This file is not a PE File\n");
 		return 1;
 	}
+	
+	m_MagicNumber			= m_DOSHeader.e_magic;
+	m_StartOfNTHeaderOffset = m_DOSHeader.e_lfanew;
+
 	return 0;
 }
 
@@ -46,10 +50,6 @@ bool PeFile::ParseNTHeaders()
 	m_DataDirs	  = m_NTHeaders.OptionalHeader.DataDirectory;
 	m_ImportDir	  = m_DataDirs[IMAGE_DIRECTORY_ENTRY_IMPORT];
 	
-	//std::printf("Arch : 0x%08x - Bit : 0x%08x\n", m_Arch, m_Bit);
-	//std::printf("VA of Import Directory Table : 0x%08x / Size : %d\n", m_ImportDir.VirtualAddress, m_ImportDir.Size);
-	//std::printf("Image Base Address : 0x%08x - Size of Image Base : %d\n", m_ImageBase, m_SizeOfImage);
-	 
 	return 0;
 }
 
@@ -58,8 +58,6 @@ bool PeFile::ParseSectionHeaders()
 	// To go to the start of Section Headers space
 	DWORD OffSectionHeaders = m_DOSHeader.e_lfanew + sizeof(m_NTHeaders);
 	
-	//std::printf("Offset Section Header : 0x%08x\n", OffSectionHeaders);
-
 	for (int i = 0; i < m_NumberOfSectionHeaders; i++)
 	{
 		// Go on each section header
@@ -71,7 +69,6 @@ bool PeFile::ParseSectionHeaders()
 
 		// Then go to the next Section Header and repeat everything
 	}
-	//std::printf("Name : %s - Section Header VA : 0x%08x - Ptr to Raw Data : 0x%08x\n", m_SectionHeaders[5].Name, m_SectionHeaders[5].VirtualAddress, m_SectionHeaders[5].PointerToRawData);
 	return 0;
 }
 
@@ -83,12 +80,13 @@ bool PeFile::ParseImportTable()
 	size_t szIID = sizeof(IMAGE_IMPORT_DESCRIPTOR);
 
 	// eX : 140 / 20 = 7 ( 7 imported dlls ) 
-	int numImportedDLL = (m_ImportDir.Size / szIID) - 1; // because last one is null
+	// In reality 6 because of the null one at the end 
+	
+	m_NumImportedDLL	= (m_ImportDir.Size / szIID) - 1;
+	m_ImportTable	    = new IMAGE_IMPORT_DESCRIPTOR[m_NumImportedDLL];
+	m_SecondImportTable = new PeImport[m_NumImportedDLL];
 
-	m_ImportTable = new IMAGE_IMPORT_DESCRIPTOR[numImportedDLL];
-	m_SecondImportTable = new PeImport[numImportedDLL];
-
-	for (int i = 0; i < numImportedDLL; i++)
+	for (int i = 0; i < m_NumImportedDLL; i++)
 	{
 		DWORD OffDLL = OffImportedDLLs + (i * szIID);
 
@@ -121,9 +119,67 @@ bool PeFile::ParseImportTable()
 			dllName,
 			dllNameLen
 		};
-
-		std::printf("Name : %s - Size : %d\n", m_SecondImportTable[i].Name, m_SecondImportTable[i].Length);
 	}
 	return 0;
+}
+
+void PeFile::DisplayInfo()
+{
+	DisplayDOSHeader();
+	DisplayNTHeader();
+	DisplaySectionHeaders();
+	DisplayImportTable();
+}
+
+void PeFile::DisplayDOSHeader()
+{
+	std::printf("----- DOS HEADER -----\n");
+	std::printf("Magic Number : 0x%08x\n", m_MagicNumber);
+	std::printf("Offset Start of NT Header : 0x%08x\n\n", m_StartOfNTHeaderOffset);
+}
+
+void PeFile::DisplayNTHeader()
+{
+	std::printf("----- NT HEADER -----\n");
+
+	std::printf("-----  -> FILE HEADER -----\n");
+	std::printf("Arch : %s\n", m_Arch == IMAGE_FILE_MACHINE_AMD64 ? "AMD64" : "Other");
+	std::printf("Timestamp : %d\n",		m_TimeStamp);
+	std::printf("Number of sections : %d\n", m_NumberOfSectionHeaders);
+
+	std::printf("-----  -> OPTIONAL HEADER -----\n");
+
+	std::printf("64 or 32 ? : %s\n",			  m_Bit == IMG_BIT64 ? "64 bit" : "32 bit");
+	std::printf("Size of Image : %d\n",			  m_SizeOfImage);
+	//std::printf("RVA to code Section : 0x%08x\n", m_RVAToCode); // When loaded in memory only
+	std::printf("Image Base : 0x%08x\n\n",		  m_ImageBase);
+}
+
+void PeFile::DisplaySectionHeaders()
+{
+	std::printf("----- SECTION HEADERS -----\n");
+
+	for (int i = 0; i < m_NumberOfSectionHeaders; i++)
+	{
+		std::printf(
+			"Name : %s - VA : 0x%08x - Pointer to Raw Data : 0x%08x\n", 
+			m_SectionHeaders[i].Name, 
+			m_SectionHeaders[i].VirtualAddress, 
+			m_SectionHeaders[i].PointerToRawData
+		);
+	}
+}
+
+void PeFile::DisplayImportTable()
+{
+	std::printf("\n----- IMPORT TABLE -----\n");
+
+	for (int i = 0; i < m_NumImportedDLL; i++)
+	{
+		std::printf(
+			"Name : %s \n", 
+			m_SecondImportTable[i].Name
+		);
+	}
 }
 
