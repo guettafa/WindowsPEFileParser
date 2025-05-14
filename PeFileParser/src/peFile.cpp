@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "peFile.h"
 
 bool Parser::ParseFile()
@@ -41,16 +40,16 @@ bool Parser::ParseNTHeaders()
 	m_TimeStamp				 = m_NTHeaders.FileHeader.TimeDateStamp;
 	m_NumberOfSectionHeaders = m_NTHeaders.FileHeader.NumberOfSections;
 	m_SectionHeaders		 = new IMAGE_SECTION_HEADER[m_NumberOfSectionHeaders];
-
+	
 	// Optional Header
-	m_Bit		  = m_NTHeaders.OptionalHeader.Magic;
-	m_ImageBase	  = m_NTHeaders.OptionalHeader.ImageBase;
-	m_SizeOfImage = m_NTHeaders.OptionalHeader.SizeOfImage;
+	m_Bit		   = m_NTHeaders.OptionalHeader.Magic;
+	m_ImageBase	   = m_NTHeaders.OptionalHeader.ImageBase;
+	m_SizeOfImage  = m_NTHeaders.OptionalHeader.SizeOfImage;
 
 	// Optional Header - Data dirs
-	m_DataDirs	  = m_NTHeaders.OptionalHeader.DataDirectory;
-	m_ImportDir	  = m_DataDirs[IMAGE_DIRECTORY_ENTRY_IMPORT];
-	m_RelocDir    = m_DataDirs[IMAGE_DIRECTORY_ENTRY_BASERELOC];
+	m_DataDirs	= m_NTHeaders.OptionalHeader.DataDirectory;
+	m_ImportDir	= m_DataDirs[IMAGE_DIRECTORY_ENTRY_IMPORT];
+	m_RelocDir  = m_DataDirs[IMAGE_DIRECTORY_ENTRY_BASERELOC];
 	
 	return 0;
 }
@@ -177,7 +176,7 @@ void Parser::DisplayNTHeader()
 	std::printf("Number of sections : %d\n", m_NumberOfSectionHeaders);
 
 	std::printf("\n-----  -> OPTIONAL HEADER -----\n");
-	std::printf("64 or 32 ? : %s\n",			  m_Bit == IMG_BIT64 ? "64 bit" : "32 bit");
+	std::printf("64 or 32 ? : %s\n",			  m_Bit == IMAGE_NT_OPTIONAL_HDR64_MAGIC ? "64 bit" : "32 bit");
 	std::printf("Size of Image : %d\n",			  m_SizeOfImage);
 	std::printf("Image Base : 0x%08x\n",		  m_ImageBase);
 

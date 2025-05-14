@@ -1,4 +1,3 @@
-#include "pch.h"
 #include "peFile.h"
 
 int main(int argc, char** argv)
