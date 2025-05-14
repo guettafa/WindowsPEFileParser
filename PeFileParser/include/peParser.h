@@ -1,5 +1,5 @@
-#ifndef PE_FILE_H
-#define PE_FILE_H
+#ifndef PE_PARSER_H
+#define PE_PARSER_H
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>

@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "peParser.h"
 
 #pragma region Parsing
 
@@ -133,7 +133,6 @@ bool Parser::ParseRelocTable()
 
 	DWORD OffNextRelocBlock	 = m_SectionHeaders[9].PointerToRawData;
 	DWORD OffEndOfRelocTable = (OffNextRelocBlock + m_RelocDir.Size);
-
 
 	int totalOfBlocks = 0;
 	while (OffNextRelocBlock != OffEndOfRelocTable)
