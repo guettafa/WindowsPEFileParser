@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "peFile.h"
 
-bool PeFile::ParseFile()
+bool Parser::ParseFile()
 {
 	if (ParseDOSHeader())       return 1;
 	if (ParseNTHeaders())       return 1;
@@ -12,7 +12,7 @@ bool PeFile::ParseFile()
 	return 0;
 }
 
-bool PeFile::ParseDOSHeader()
+bool Parser::ParseDOSHeader()
 {
 	std::printf("PE FileName : %s\n", m_PEFileName);
 	
@@ -31,7 +31,7 @@ bool PeFile::ParseDOSHeader()
 	return 0;
 }
 
-bool PeFile::ParseNTHeaders()
+bool Parser::ParseNTHeaders()
 {
 	fseek(m_PEFilePtr,  m_DOSHeader.e_lfanew, SEEK_SET);
 	fread(&m_NTHeaders, sizeof(IMAGE_NT_HEADERS), 1, m_PEFilePtr);
@@ -55,7 +55,7 @@ bool PeFile::ParseNTHeaders()
 	return 0;
 }
 
-bool PeFile::ParseSectionHeaders()
+bool Parser::ParseSectionHeaders()
 {
 	// To go to the start of Section Headers space
 	DWORD OffSectionHeaders = m_DOSHeader.e_lfanew + sizeof(m_NTHeaders);
@@ -74,7 +74,7 @@ bool PeFile::ParseSectionHeaders()
 	return 0;
 }
 
-bool PeFile::ParseImportTable()
+bool Parser::ParseImportTable()
 {
 	// eX : (23500 - 23000) + 0xf400 = 0xf900 = offset to the start of the import table
 	DWORD OffImportedDLLs = (m_ImportDir.VirtualAddress - m_SectionHeaders[5].VirtualAddress) + m_SectionHeaders[5].PointerToRawData;
@@ -125,7 +125,7 @@ bool PeFile::ParseImportTable()
 	return 0;
 }
 
-bool PeFile::ParseRelocTable()
+bool Parser::ParseRelocTable()
 {
 	uint16_t lastSizeOfBlock = 0;
 	size_t	 szIBR			 = sizeof(IMAGE_BASE_RELOCATION);
@@ -158,7 +158,7 @@ bool PeFile::ParseRelocTable()
 	return 0;
 }
 
-void PeFile::DisplayInfo()
+void Parser::DisplayInfo()
 {
 	DisplayDOSHeader();
 	DisplayNTHeader();
@@ -166,14 +166,14 @@ void PeFile::DisplayInfo()
 	DisplayImportTable();
 }
 
-void PeFile::DisplayDOSHeader()
+void Parser::DisplayDOSHeader()
 {
 	std::printf("----- DOS HEADER -----\n");
 	std::printf("Magic Number : 0x%08x\n", m_MagicNumber);
 	std::printf("Offset Start of NT Header : 0x%08x\n\n", m_StartOfNTHeaderOffset);
 }
 
-void PeFile::DisplayNTHeader()
+void Parser::DisplayNTHeader()
 {
 	std::printf("----- NT HEADER -----\n");
 
@@ -190,7 +190,7 @@ void PeFile::DisplayNTHeader()
 	std::printf("Image Base : 0x%08x\n\n",		  m_ImageBase);
 }
 
-void PeFile::DisplaySectionHeaders()
+void Parser::DisplaySectionHeaders()
 {
 	std::printf("----- SECTION HEADERS -----\n");
 
@@ -205,7 +205,7 @@ void PeFile::DisplaySectionHeaders()
 	}
 }
 
-void PeFile::DisplayImportTable()
+void Parser::DisplayImportTable()
 {
 	std::printf("\n----- IMPORT TABLE -----\n");
 

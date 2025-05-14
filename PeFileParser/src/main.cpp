@@ -6,8 +6,8 @@ int main(int argc, char** argv)
 	FILE* peFile;
 	fopen_s(&peFile, argv[1], "rb");
 
-	Parser pf(argv[1], peFile);
+	Parser parser(argv[1], peFile);
 
-	pf.DisplayInfo();
+	parser.DisplayInfo();
 	return 0;
 }

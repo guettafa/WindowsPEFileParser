@@ -55,8 +55,9 @@ private:
 	IMAGE_DATA_DIRECTORY     m_ImportDir;		  // Import Table 
 	IMAGE_DATA_DIRECTORY     m_RelocDir;		  // Relocation Table
 
+	IMAGE_BASE_RELOCATION*	 m_RelocTable;		  // All relocations blocks
 	IMAGE_IMPORT_DESCRIPTOR* m_ImportTable;		  // All dlls imported
-	PeImport*				 m_SecondImportTable; // A second "import table" that
+	PeImport*				 m_SecondImportTable; // A second "import table"
 	int						 m_NumImportedDLL;
 
 	// Section Headers
