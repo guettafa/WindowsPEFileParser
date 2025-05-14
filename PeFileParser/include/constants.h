@@ -3,6 +3,8 @@
 
 #include "pch.h"
 
+#define SIZE_ENTRY 2
+
 #define EXECUTABLE_MARK 0x5A4D
 
 #define IMG_BIT64 IMAGE_NT_OPTIONAL_HDR64_MAGIC

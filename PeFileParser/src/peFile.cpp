@@ -7,6 +7,7 @@ bool PeFile::ParseFile()
 	if (ParseNTHeaders())       return 1;
 	if (ParseSectionHeaders())  return 1;
 	if (ParseImportTable())		return 1;
+	if (ParseRelocTable())		return 1;
 
 	return 0;
 }
@@ -49,6 +50,7 @@ bool PeFile::ParseNTHeaders()
 	// Optional Header - Data dirs
 	m_DataDirs	  = m_NTHeaders.OptionalHeader.DataDirectory;
 	m_ImportDir	  = m_DataDirs[IMAGE_DIRECTORY_ENTRY_IMPORT];
+	m_RelocDir    = m_DataDirs[IMAGE_DIRECTORY_ENTRY_BASERELOC];
 	
 	return 0;
 }
@@ -119,6 +121,39 @@ bool PeFile::ParseImportTable()
 			dllName,
 			dllNameLen
 		};
+	}
+	return 0;
+}
+
+bool PeFile::ParseRelocTable()
+{
+	uint16_t lastSizeOfBlock = 0;
+	size_t	 szIBR			 = sizeof(IMAGE_BASE_RELOCATION);
+
+	DWORD OffNextRelocBlock = m_SectionHeaders[9].PointerToRawData;
+
+	while (OffNextRelocBlock != (OffNextRelocBlock + m_RelocDir.Size))
+	{
+		IMAGE_BASE_RELOCATION processedBlock{};
+
+		fseek(m_PEFilePtr, OffNextRelocBlock, SEEK_SET);
+		fread(&processedBlock, szIBR, 1, m_PEFilePtr);
+		
+		uint8_t totalEntries = (processedBlock.SizeOfBlock - szIBR) / SIZE_ENTRY;
+
+		lastSizeOfBlock = processedBlock.SizeOfBlock;
+
+		std::printf("Size of the block : %d - RVA : 0x%08x \n", lastSizeOfBlock, processedBlock.VirtualAddress);
+
+		// Each entry is 2 bytes and each block start with the 8 byte struct IMAGE_BASE_RELOCATION
+		std::printf("Number of entries : %d\n", totalEntries);
+	
+		for (int i = 0; i < totalEntries; i++)
+		{
+			DWORD OffEntry = (OffNextRelocBlock + szIBR) + (i * SIZE_ENTRY); // Each entry is 2 bytes
+			std::printf("Offset of entry : 0x%08x\n", OffEntry);
+		}
+		OffNextRelocBlock += lastSizeOfBlock;
 	}
 	return 0;
 }
