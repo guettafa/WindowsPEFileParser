@@ -1,5 +1,7 @@
 #include "peFile.h"
 
+#pragma region Parsing
+
 bool Parser::ParseFile()
 {
 	if (ParseDOSHeader())       return 1;
@@ -148,6 +150,10 @@ bool Parser::ParseRelocTable()
 	return 0;
 }
 
+#pragma endregion
+
+#pragma region Display
+
 void Parser::DisplayInfo()
 {
 	DisplayDOSHeader();
@@ -238,4 +244,6 @@ void Parser::DisplayRelocTable()
 		OffBlock += m_RelocTable[i].SizeOfBlock;
 	}
 }
+
+#pragma endregion
 
