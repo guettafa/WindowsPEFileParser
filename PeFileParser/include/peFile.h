@@ -1,7 +1,10 @@
 #ifndef PE_FILE_H
 #define PE_FILE_H
 
-#include "pch.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
+#include <iostream>
 #include "constants.h"
 
 struct PeImport
@@ -10,18 +13,20 @@ struct PeImport
 	int   Length;
 };
 
-class PeFile
+class Parser
 {
 private:
 	bool ParseDOSHeader();
 	bool ParseNTHeaders();
 	bool ParseSectionHeaders();
 	bool ParseImportTable();
+	bool ParseRelocTable();
 
 	void DisplayDOSHeader();
 	void DisplayNTHeader();
 	void DisplaySectionHeaders();
 	void DisplayImportTable();
+	void DisplayRelocTable();
 
 	const char* m_PEFileName;
 	FILE*		m_PEFilePtr;
@@ -50,11 +55,15 @@ private:
 	
 	// NT Headers -- Optional Header - Data Dirs
 
-	IMAGE_DATA_DIRECTORY* m_DataDirs;			  // Array of Data Directory Entries
-	IMAGE_DATA_DIRECTORY  m_ImportDir;			  // Import Table 
+	IMAGE_DATA_DIRECTORY*    m_DataDirs;		  // Array of Data Directory Entries
 
+	IMAGE_DATA_DIRECTORY     m_RelocDir;		  // Relocation Table
+	IMAGE_BASE_RELOCATION*	 m_RelocTable;		  // All relocations blocks
+	int						 m_TotalRelocBlock;
+	
+	IMAGE_DATA_DIRECTORY     m_ImportDir;		  // Import Table 
 	IMAGE_IMPORT_DESCRIPTOR* m_ImportTable;		  // All dlls imported
-	PeImport*				 m_SecondImportTable; // A second "import table" 
+	PeImport*				 m_SecondImportTable; // A second "import table"
 	int						 m_NumImportedDLL;
 
 	// Section Headers
@@ -65,14 +74,16 @@ public:
 	bool ParseFile();
 	void DisplayInfo();
 
-	inline PeFile(const char* aPeFileName, FILE* aPeFilePtr)
+	inline Parser(const char* aPeFileName, FILE* aPeFilePtr)
 		: m_PEFileName(aPeFileName), m_PEFilePtr(aPeFilePtr) 
 	{
 		if (ParseFile()) return;
 	}
 
-	inline ~PeFile()
+	inline ~Parser()
 	{
+		free(m_RelocTable); // using malloc for it
+
 		delete[] m_SecondImportTable;
 		delete[] m_ImportTable;
 		delete[] m_SectionHeaders;

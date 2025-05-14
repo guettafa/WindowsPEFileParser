@@ -1,17 +1,19 @@
-#include "pch.h"
 #include "peFile.h"
 
-bool PeFile::ParseFile()
+#pragma region Parsing
+
+bool Parser::ParseFile()
 {
 	if (ParseDOSHeader())       return 1;
 	if (ParseNTHeaders())       return 1;
 	if (ParseSectionHeaders())  return 1;
 	if (ParseImportTable())		return 1;
+	if (ParseRelocTable())		return 1;
 
 	return 0;
 }
 
-bool PeFile::ParseDOSHeader()
+bool Parser::ParseDOSHeader()
 {
 	std::printf("PE FileName : %s\n", m_PEFileName);
 	
@@ -30,7 +32,7 @@ bool PeFile::ParseDOSHeader()
 	return 0;
 }
 
-bool PeFile::ParseNTHeaders()
+bool Parser::ParseNTHeaders()
 {
 	fseek(m_PEFilePtr,  m_DOSHeader.e_lfanew, SEEK_SET);
 	fread(&m_NTHeaders, sizeof(IMAGE_NT_HEADERS), 1, m_PEFilePtr);
@@ -40,20 +42,21 @@ bool PeFile::ParseNTHeaders()
 	m_TimeStamp				 = m_NTHeaders.FileHeader.TimeDateStamp;
 	m_NumberOfSectionHeaders = m_NTHeaders.FileHeader.NumberOfSections;
 	m_SectionHeaders		 = new IMAGE_SECTION_HEADER[m_NumberOfSectionHeaders];
-
+	
 	// Optional Header
-	m_Bit		  = m_NTHeaders.OptionalHeader.Magic;
-	m_ImageBase	  = m_NTHeaders.OptionalHeader.ImageBase;
-	m_SizeOfImage = m_NTHeaders.OptionalHeader.SizeOfImage;
+	m_Bit		   = m_NTHeaders.OptionalHeader.Magic;
+	m_ImageBase	   = m_NTHeaders.OptionalHeader.ImageBase;
+	m_SizeOfImage  = m_NTHeaders.OptionalHeader.SizeOfImage;
 
 	// Optional Header - Data dirs
-	m_DataDirs	  = m_NTHeaders.OptionalHeader.DataDirectory;
-	m_ImportDir	  = m_DataDirs[IMAGE_DIRECTORY_ENTRY_IMPORT];
+	m_DataDirs	= m_NTHeaders.OptionalHeader.DataDirectory;
+	m_ImportDir	= m_DataDirs[IMAGE_DIRECTORY_ENTRY_IMPORT];
+	m_RelocDir  = m_DataDirs[IMAGE_DIRECTORY_ENTRY_BASERELOC];
 	
 	return 0;
 }
 
-bool PeFile::ParseSectionHeaders()
+bool Parser::ParseSectionHeaders()
 {
 	// To go to the start of Section Headers space
 	DWORD OffSectionHeaders = m_DOSHeader.e_lfanew + sizeof(m_NTHeaders);
@@ -72,7 +75,7 @@ bool PeFile::ParseSectionHeaders()
 	return 0;
 }
 
-bool PeFile::ParseImportTable()
+bool Parser::ParseImportTable()
 {
 	// eX : (23500 - 23000) + 0xf400 = 0xf900 = offset to the start of the import table
 	DWORD OffImportedDLLs = (m_ImportDir.VirtualAddress - m_SectionHeaders[5].VirtualAddress) + m_SectionHeaders[5].PointerToRawData;
@@ -123,42 +126,72 @@ bool PeFile::ParseImportTable()
 	return 0;
 }
 
-void PeFile::DisplayInfo()
+bool Parser::ParseRelocTable()
+{
+	// Alloc memory in m_RelocTable ptr
+	m_RelocTable = (IMAGE_BASE_RELOCATION*)malloc(m_RelocDir.Size);
+
+	DWORD OffNextRelocBlock	 = m_SectionHeaders[9].PointerToRawData;
+	DWORD OffEndOfRelocTable = (OffNextRelocBlock + m_RelocDir.Size);
+
+
+	int totalOfBlocks = 0;
+	while (OffNextRelocBlock != OffEndOfRelocTable)
+	{
+		fseek(m_PEFilePtr, OffNextRelocBlock, SEEK_SET);
+		fread(&m_RelocTable[totalOfBlocks], sizeof(IMAGE_BASE_RELOCATION), 1, m_PEFilePtr);
+
+		OffNextRelocBlock += m_RelocTable[totalOfBlocks].SizeOfBlock;
+		totalOfBlocks++;
+	}
+
+	m_TotalRelocBlock = totalOfBlocks;
+	
+	return 0;
+}
+
+#pragma endregion
+
+#pragma region Display
+
+void Parser::DisplayInfo()
 {
 	DisplayDOSHeader();
 	DisplayNTHeader();
 	DisplaySectionHeaders();
 	DisplayImportTable();
+	DisplayRelocTable();
 }
 
-void PeFile::DisplayDOSHeader()
+void Parser::DisplayDOSHeader()
 {
-	std::printf("----- DOS HEADER -----\n");
+	std::printf("\n----- DOS HEADER -----\n");
 	std::printf("Magic Number : 0x%08x\n", m_MagicNumber);
-	std::printf("Offset Start of NT Header : 0x%08x\n\n", m_StartOfNTHeaderOffset);
+	std::printf("Offset Start of NT Header : 0x%08x\n", m_StartOfNTHeaderOffset);
+
+	std::puts("-------------------------------");
 }
 
-void PeFile::DisplayNTHeader()
+void Parser::DisplayNTHeader()
 {
-	std::printf("----- NT HEADER -----\n");
+	std::printf("\n----- NT HEADER -----\n");
 
-	std::printf("-----  -> FILE HEADER -----\n");
+	std::printf("\n-----  -> FILE HEADER -----\n");
 	std::printf("Arch : %s\n", m_Arch == IMAGE_FILE_MACHINE_AMD64 ? "AMD64" : "Other");
 	std::printf("Timestamp : %d\n",		m_TimeStamp);
 	std::printf("Number of sections : %d\n", m_NumberOfSectionHeaders);
 
-	std::printf("-----  -> OPTIONAL HEADER -----\n");
-
-	std::printf("64 or 32 ? : %s\n",			  m_Bit == IMG_BIT64 ? "64 bit" : "32 bit");
+	std::printf("\n-----  -> OPTIONAL HEADER -----\n");
+	std::printf("64 or 32 ? : %s\n",			  m_Bit == IMAGE_NT_OPTIONAL_HDR64_MAGIC ? "64 bit" : "32 bit");
 	std::printf("Size of Image : %d\n",			  m_SizeOfImage);
-	//std::printf("RVA to code Section : 0x%08x\n", m_RVAToCode); // When loaded in memory only
-	std::printf("Image Base : 0x%08x\n\n",		  m_ImageBase);
+	std::printf("Image Base : 0x%08x\n",		  m_ImageBase);
+
+	std::puts("-------------------------------");
 }
 
-void PeFile::DisplaySectionHeaders()
+void Parser::DisplaySectionHeaders()
 {
-	std::printf("----- SECTION HEADERS -----\n");
-
+	std::printf("\n----- SECTION HEADERS -----\n");
 	for (int i = 0; i < m_NumberOfSectionHeaders; i++)
 	{
 		std::printf(
@@ -168,9 +201,10 @@ void PeFile::DisplaySectionHeaders()
 			m_SectionHeaders[i].PointerToRawData
 		);
 	}
+	std::puts("-------------------------------");
 }
 
-void PeFile::DisplayImportTable()
+void Parser::DisplayImportTable()
 {
 	std::printf("\n----- IMPORT TABLE -----\n");
 
@@ -181,5 +215,35 @@ void PeFile::DisplayImportTable()
 			m_SecondImportTable[i].Name
 		);
 	}
+	std::puts("-------------------------------");
 }
+
+void Parser::DisplayRelocTable()
+{
+	std::printf("\n----- BASE RELOCATION TABLE -----\n");
+
+	size_t szIBR = sizeof(IMAGE_BASE_RELOCATION);
+	
+	// Not the fanciest way ik ik. I already did that above but it gets the job done
+	DWORD OffBlock = m_SectionHeaders[9].PointerToRawData;
+
+	for (int i = 0; i < m_TotalRelocBlock; i++)
+	{
+		// Each entry is 2 bytes and each block start with the 8 byte struct IMAGE_BASE_RELOCATION
+		uint8_t totalEntries = (m_RelocTable[i].SizeOfBlock - szIBR) / SIZE_ENTRY;
+
+		std::printf("%d | VA: 0x%08x - Offset : 0x%08x - Total Entries : %d\n", i, m_RelocTable[i].VirtualAddress, OffBlock, totalEntries);
+		std::puts("-------------------------------");
+
+		for (int j = 0; j < totalEntries; j++)
+		{
+			DWORD OffEntry = (OffBlock + szIBR) + (j * SIZE_ENTRY); // Each entry is 2 bytes
+			std::printf("%d\t -> 0x%08x\n", j, OffEntry);
+		}
+		std::puts("-------------------------------");
+		OffBlock += m_RelocTable[i].SizeOfBlock;
+	}
+}
+
+#pragma endregion
 
