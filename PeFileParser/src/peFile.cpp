@@ -130,9 +130,10 @@ bool Parser::ParseRelocTable()
 	uint16_t lastSizeOfBlock = 0;
 	size_t	 szIBR			 = sizeof(IMAGE_BASE_RELOCATION);
 
-	DWORD OffNextRelocBlock = m_SectionHeaders[9].PointerToRawData;
+	DWORD OffNextRelocBlock	 = m_SectionHeaders[9].PointerToRawData;
+	DWORD OffEndOfRelocTable = (OffNextRelocBlock + m_RelocDir.Size);
 
-	while (OffNextRelocBlock != (OffNextRelocBlock + m_RelocDir.Size))
+	while (OffNextRelocBlock != OffEndOfRelocTable)
 	{
 		IMAGE_BASE_RELOCATION processedBlock{};
 
