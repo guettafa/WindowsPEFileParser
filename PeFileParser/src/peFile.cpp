@@ -127,35 +127,25 @@ bool Parser::ParseImportTable()
 
 bool Parser::ParseRelocTable()
 {
-	uint16_t lastSizeOfBlock = 0;
-	size_t	 szIBR			 = sizeof(IMAGE_BASE_RELOCATION);
+	// Alloc memory in m_RelocTable ptr
+	m_RelocTable = (IMAGE_BASE_RELOCATION*)malloc(m_RelocDir.Size);
 
 	DWORD OffNextRelocBlock	 = m_SectionHeaders[9].PointerToRawData;
 	DWORD OffEndOfRelocTable = (OffNextRelocBlock + m_RelocDir.Size);
 
+
+	int totalOfBlocks = 0;
 	while (OffNextRelocBlock != OffEndOfRelocTable)
 	{
-		IMAGE_BASE_RELOCATION processedBlock{};
-
 		fseek(m_PEFilePtr, OffNextRelocBlock, SEEK_SET);
-		fread(&processedBlock, szIBR, 1, m_PEFilePtr);
-		
-		uint8_t totalEntries = (processedBlock.SizeOfBlock - szIBR) / SIZE_ENTRY;
+		fread(&m_RelocTable[totalOfBlocks], sizeof(IMAGE_BASE_RELOCATION), 1, m_PEFilePtr);
 
-		lastSizeOfBlock = processedBlock.SizeOfBlock;
-
-		std::printf("Size of the block : %d - RVA : 0x%08x \n", lastSizeOfBlock, processedBlock.VirtualAddress);
-
-		// Each entry is 2 bytes and each block start with the 8 byte struct IMAGE_BASE_RELOCATION
-		std::printf("Number of entries : %d\n", totalEntries);
-	
-		for (int i = 0; i < totalEntries; i++)
-		{
-			DWORD OffEntry = (OffNextRelocBlock + szIBR) + (i * SIZE_ENTRY); // Each entry is 2 bytes
-			std::printf("Offset of entry : 0x%08x\n", OffEntry);
-		}
-		OffNextRelocBlock += lastSizeOfBlock;
+		OffNextRelocBlock += m_RelocTable[totalOfBlocks].SizeOfBlock;
+		totalOfBlocks++;
 	}
+
+	m_TotalRelocBlock = totalOfBlocks;
+	
 	return 0;
 }
 
@@ -165,36 +155,38 @@ void Parser::DisplayInfo()
 	DisplayNTHeader();
 	DisplaySectionHeaders();
 	DisplayImportTable();
+	DisplayRelocTable();
 }
 
 void Parser::DisplayDOSHeader()
 {
-	std::printf("----- DOS HEADER -----\n");
+	std::printf("\n----- DOS HEADER -----\n");
 	std::printf("Magic Number : 0x%08x\n", m_MagicNumber);
-	std::printf("Offset Start of NT Header : 0x%08x\n\n", m_StartOfNTHeaderOffset);
+	std::printf("Offset Start of NT Header : 0x%08x\n", m_StartOfNTHeaderOffset);
+
+	std::puts("-------------------------------");
 }
 
 void Parser::DisplayNTHeader()
 {
-	std::printf("----- NT HEADER -----\n");
+	std::printf("\n----- NT HEADER -----\n");
 
-	std::printf("-----  -> FILE HEADER -----\n");
+	std::printf("\n-----  -> FILE HEADER -----\n");
 	std::printf("Arch : %s\n", m_Arch == IMAGE_FILE_MACHINE_AMD64 ? "AMD64" : "Other");
 	std::printf("Timestamp : %d\n",		m_TimeStamp);
 	std::printf("Number of sections : %d\n", m_NumberOfSectionHeaders);
 
-	std::printf("-----  -> OPTIONAL HEADER -----\n");
-
+	std::printf("\n-----  -> OPTIONAL HEADER -----\n");
 	std::printf("64 or 32 ? : %s\n",			  m_Bit == IMG_BIT64 ? "64 bit" : "32 bit");
 	std::printf("Size of Image : %d\n",			  m_SizeOfImage);
-	//std::printf("RVA to code Section : 0x%08x\n", m_RVAToCode); // When loaded in memory only
-	std::printf("Image Base : 0x%08x\n\n",		  m_ImageBase);
+	std::printf("Image Base : 0x%08x\n",		  m_ImageBase);
+
+	std::puts("-------------------------------");
 }
 
 void Parser::DisplaySectionHeaders()
 {
-	std::printf("----- SECTION HEADERS -----\n");
-
+	std::printf("\n----- SECTION HEADERS -----\n");
 	for (int i = 0; i < m_NumberOfSectionHeaders; i++)
 	{
 		std::printf(
@@ -204,6 +196,7 @@ void Parser::DisplaySectionHeaders()
 			m_SectionHeaders[i].PointerToRawData
 		);
 	}
+	std::puts("-------------------------------");
 }
 
 void Parser::DisplayImportTable()
@@ -216,6 +209,34 @@ void Parser::DisplayImportTable()
 			"Name : %s \n", 
 			m_SecondImportTable[i].Name
 		);
+	}
+	std::puts("-------------------------------");
+}
+
+void Parser::DisplayRelocTable()
+{
+	std::printf("\n----- BASE RELOCATION TABLE -----\n");
+
+	size_t szIBR = sizeof(IMAGE_BASE_RELOCATION);
+	
+	// Not the fanciest way ik ik. I already did that above but it gets the job done
+	DWORD OffBlock = m_SectionHeaders[9].PointerToRawData;
+
+	for (int i = 0; i < m_TotalRelocBlock; i++)
+	{
+		// Each entry is 2 bytes and each block start with the 8 byte struct IMAGE_BASE_RELOCATION
+		uint8_t totalEntries = (m_RelocTable[i].SizeOfBlock - szIBR) / SIZE_ENTRY;
+
+		std::printf("%d | VA: 0x%08x - Offset : 0x%08x - Total Entries : %d\n", i, m_RelocTable[i].VirtualAddress, OffBlock, totalEntries);
+		std::puts("-------------------------------");
+
+		for (int j = 0; j < totalEntries; j++)
+		{
+			DWORD OffEntry = (OffBlock + szIBR) + (j * SIZE_ENTRY); // Each entry is 2 bytes
+			std::printf("%d\t -> 0x%08x\n", j, OffEntry);
+		}
+		std::puts("-------------------------------");
+		OffBlock += m_RelocTable[i].SizeOfBlock;
 	}
 }
 

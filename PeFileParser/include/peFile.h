@@ -23,6 +23,7 @@ private:
 	void DisplayNTHeader();
 	void DisplaySectionHeaders();
 	void DisplayImportTable();
+	void DisplayRelocTable();
 
 	const char* m_PEFileName;
 	FILE*		m_PEFilePtr;
@@ -52,17 +53,19 @@ private:
 	// NT Headers -- Optional Header - Data Dirs
 
 	IMAGE_DATA_DIRECTORY*    m_DataDirs;		  // Array of Data Directory Entries
-	IMAGE_DATA_DIRECTORY     m_ImportDir;		  // Import Table 
-	IMAGE_DATA_DIRECTORY     m_RelocDir;		  // Relocation Table
 
+	IMAGE_DATA_DIRECTORY     m_RelocDir;		  // Relocation Table
 	IMAGE_BASE_RELOCATION*	 m_RelocTable;		  // All relocations blocks
+	int						 m_TotalRelocBlock;
+	
+	IMAGE_DATA_DIRECTORY     m_ImportDir;		  // Import Table 
 	IMAGE_IMPORT_DESCRIPTOR* m_ImportTable;		  // All dlls imported
 	PeImport*				 m_SecondImportTable; // A second "import table"
 	int						 m_NumImportedDLL;
 
 	// Section Headers
 	
-	IMAGE_SECTION_HEADER* m_SectionHeaders; // Array of with all Section Headers
+	IMAGE_SECTION_HEADER* m_SectionHeaders; // Array with all Section Headers
 
 public:
 	bool ParseFile();
@@ -76,6 +79,8 @@ public:
 
 	inline ~Parser()
 	{
+		free(m_RelocTable); // using malloc for it
+
 		delete[] m_SecondImportTable;
 		delete[] m_ImportTable;
 		delete[] m_SectionHeaders;
